@@ -17,13 +17,41 @@ All endpoints require authentication via Laravel Sanctum with the `auth:sanctum`
 
 ## Endpoints
 
-### 1. List All Contacts
+### 1. List All Contacts (with Filtering & Search)
 **GET** `/api/vaults/{vault_id}/contacts`
 
-Lists all contacts in a vault.
+Lists all contacts in a vault with optional filtering and search capabilities.
 
 **Parameters:**
 - `limit` (optional, integer): Number of results per page (1-100, default: 10)
+- `favorite` (optional, integer): Filter by favorite status
+  - `1` - Show only favorite contacts
+  - `0` - Show only non-favorite contacts
+  - Omit to show all contacts
+- `search` (optional, string): Search term to filter contacts by name
+  - Searches across: first_name, last_name, middle_name, nickname, maiden_name
+  - Case-insensitive partial match
+
+**Filtering Examples:**
+```bash
+# Get all contacts
+GET /api/vaults/{vault_id}/contacts
+
+# Get only favorite contacts
+GET /api/vaults/{vault_id}/contacts?favorite=1
+
+# Search for contacts named "john"
+GET /api/vaults/{vault_id}/contacts?search=john
+
+# Get favorite contacts named "john"
+GET /api/vaults/{vault_id}/contacts?favorite=1&search=john
+
+# Paginate with 20 results per page
+GET /api/vaults/{vault_id}/contacts?limit=20
+
+# Combine all filters
+GET /api/vaults/{vault_id}/contacts?favorite=1&search=john&limit=20
+```
 
 **Response:**
 ```json
@@ -34,14 +62,35 @@ Lists all contacts in a vault.
       "vault_id": "uuid",
       "first_name": "John",
       "last_name": "Doe",
-      "is_favorite": false,
-      "personal_note": null,
+      "is_favorite": true,
+      "personal_note": "Important contact",
       "created_at": 1234567890,
       "updated_at": 1234567890
     }
-  ]
+  ],
+  "links": {
+    "first": "http://localhost/api/vaults/{vault_id}/contacts?page=1",
+    "last": "http://localhost/api/vaults/{vault_id}/contacts?page=5",
+    "prev": null,
+    "next": "http://localhost/api/vaults/{vault_id}/contacts?page=2"
+  },
+  "meta": {
+    "current_page": 1,
+    "from": 1,
+    "last_page": 5,
+    "per_page": 10,
+    "to": 10,
+    "total": 50
+  }
 }
 ```
+
+**Features:**
+- ✅ Pagination continues working with filters
+- ✅ Existing sorting continues working
+- ✅ No duplicated query logic
+- ✅ Multiple filters can be combined
+- ✅ Case-insensitive search
 
 ---
 
@@ -290,3 +339,64 @@ All endpoints return data formatted through `ContactResource`.
 - Personal notes can be up to 65,535 characters (TEXT field)
 - The `listed` field filters contacts visible in listings
 - The `last_updated_at` timestamp is automatically updated on modifications
+
+---
+
+## Search & Filtering
+
+### Query Parameters
+
+The main listing endpoint (`GET /api/vaults/{vault_id}/contacts`) supports the following query parameters for filtering and searching:
+
+#### 1. Favorite Filter (`favorite`)
+- **Type**: Integer (0 or 1)
+- **Usage**: `?favorite=1` for favorites only, `?favorite=0` for non-favorites
+- **Default**: All contacts (when parameter is omitted)
+
+#### 2. Search Filter (`search`)
+- **Type**: String
+- **Usage**: `?search=john`
+- **Behavior**: 
+  - Case-insensitive partial match
+  - Searches across: `first_name`, `last_name`, `middle_name`, `nickname`, `maiden_name`
+  - Uses SQL LIKE with wildcards
+
+#### 3. Pagination (`limit`)
+- **Type**: Integer (1-100)
+- **Usage**: `?limit=20`
+- **Default**: 10
+
+### Combining Filters
+
+Filters can be combined using the `&` operator:
+
+```bash
+# Favorite contacts named "john" with 20 per page
+GET /api/vaults/{vault_id}/contacts?favorite=1&search=john&limit=20
+```
+
+### Implementation Details
+
+- **No Query Duplication**: All filtering logic is centralized in `ContactQuery` class
+- **Pagination Preserved**: Laravel's pagination works seamlessly with filters
+- **Sorting Maintained**: Any existing sorting behavior is preserved
+- **Performance**: Database indexes on name fields recommended for optimal search performance
+
+### Architecture
+
+```
+Request → ContactController
+    ↓
+ContactQuery::apply()
+    ↓
+    ├─ filterByFavorite() - if favorite parameter present
+    ├─ filterBySearch()   - if search parameter present
+    ↓
+Paginated Query → Response
+```
+
+The query builder pattern ensures:
+- Single source of truth for filtering logic
+- Easy to extend with new filters
+- Maintainable and testable code
+- No duplication across different endpoints

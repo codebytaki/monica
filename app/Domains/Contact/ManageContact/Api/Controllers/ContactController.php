@@ -2,6 +2,7 @@
 
 namespace App\Domains\Contact\ManageContact\Api\Controllers;
 
+use App\Domains\Contact\ManageContact\Api\Queries\ContactQuery;
 use App\Domains\Contact\ManageContact\Services\MarkContactAsFavorite;
 use App\Domains\Contact\ManageContact\Services\RemoveContactFromFavorites;
 use App\Domains\Contact\ManageContact\Services\ToggleFavoriteContact;
@@ -30,17 +31,23 @@ class ContactController extends ApiController
     /**
      * List all contacts.
      *
-     * Get all the contacts in a vault.
+     * Get all the contacts in a vault with optional filtering by favorite status and search term.
      */
     #[QueryParam('limit', 'int', description: 'A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.', required: false, example: 10)]
+    #[QueryParam('favorite', 'int', description: 'Filter by favorite status. 1 for favorites only, 0 for non-favorites only.', required: false, example: 1)]
+    #[QueryParam('search', 'string', description: 'Search term to filter contacts by name (first, last, middle, nickname, or maiden name).', required: false, example: 'john')]
     #[ResponseFromApiResource(ContactResource::class, Contact::class, collection: true)]
     public function index(Request $request, string $vaultId)
     {
-        $contacts = $request->user()->account->vaults()
+        $query = $request->user()->account->vaults()
             ->findOrFail($vaultId)
             ->contacts()
-            ->where('listed', true)
-            ->paginate($this->getLimitPerPage());
+            ->where('listed', true);
+
+        // Apply filters using ContactQuery
+        $query = ContactQuery::apply($query, $request);
+
+        $contacts = $query->paginate($this->getLimitPerPage());
 
         return ContactResource::collection($contacts);
     }
