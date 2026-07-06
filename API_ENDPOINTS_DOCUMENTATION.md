@@ -243,6 +243,32 @@ Updates the personal note for a contact.
 
 ---
 
+### 8. Get Contact Statistics
+**GET** `/api/vaults/{vault_id}/contacts/stats`
+
+Returns summary statistics for contacts in the vault.
+
+**Response:**
+```json
+{
+  "total_contacts": 125,
+  "favorite_contacts": 18,
+  "contacts_with_notes": 42
+}
+```
+
+**Statistics Breakdown:**
+- `total_contacts` - Total number of listed contacts in the vault
+- `favorite_contacts` - Number of contacts marked as favorites
+- `contacts_with_notes` - Number of contacts with personal notes
+
+**Performance:**
+- Uses efficient single-query aggregation
+- No contacts loaded into memory
+- Optimized for large datasets
+
+---
+
 ## Error Responses
 
 ### 401 Unauthorized
@@ -310,6 +336,13 @@ curl -X PUT "http://localhost/api/vaults/{vault_id}/contacts/{contact_id}/note" 
 #### Toggle favorite status:
 ```bash
 curl -X PATCH "http://localhost/api/vaults/{vault_id}/contacts/{contact_id}/favorite" \
+  -H "Authorization: Bearer {token}" \
+  -H "Accept: application/json"
+```
+
+#### Get statistics:
+```bash
+curl -X GET "http://localhost/api/vaults/{vault_id}/contacts/stats" \
   -H "Authorization: Bearer {token}" \
   -H "Accept: application/json"
 ```

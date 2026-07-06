@@ -3,6 +3,7 @@
 namespace App\Domains\Contact\ManageContact\Api\Controllers;
 
 use App\Domains\Contact\ManageContact\Api\Queries\ContactQuery;
+use App\Domains\Contact\ManageContact\Services\GetContactStatistics;
 use App\Domains\Contact\ManageContact\Services\MarkContactAsFavorite;
 use App\Domains\Contact\ManageContact\Services\RemoveContactFromFavorites;
 use App\Domains\Contact\ManageContact\Services\ToggleFavoriteContact;
@@ -22,7 +23,7 @@ class ContactController extends ApiController
 {
     public function __construct()
     {
-        $this->middleware('abilities:read')->only(['index', 'show', 'favorites']);
+        $this->middleware('abilities:read')->only(['index', 'show', 'favorites', 'stats']);
         $this->middleware('abilities:write')->only(['markFavorite', 'removeFavorite', 'toggleFavorite', 'updateNote']);
 
         parent::__construct();
@@ -170,5 +171,28 @@ class ContactController extends ApiController
         $contact = (new UpdateContactPersonalNote)->execute($data);
 
         return new ContactResource($contact);
+    }
+
+    /**
+     * Get contact statistics.
+     *
+     * Returns summary statistics for contacts in the vault.
+     */
+    #[Response([
+        'total_contacts' => 125,
+        'favorite_contacts' => 18,
+        'contacts_with_notes' => 42,
+    ])]
+    public function stats(Request $request, string $vaultId)
+    {
+        $data = [
+            'account_id' => $request->user()->account_id,
+            'author_id' => $request->user()->id,
+            'vault_id' => $vaultId,
+        ];
+
+        $statistics = (new GetContactStatistics)->execute($data);
+
+        return response()->json($statistics);
     }
 }

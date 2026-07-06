@@ -28,6 +28,7 @@ Route::middleware('auth:sanctum')->name('api.')->group(function () {
     Route::prefix('vaults/{vault}')->group(function () {
         Route::get('contacts', [ContactController::class, 'index'])->name('contacts.index');
         Route::get('contacts/favorites', [ContactController::class, 'favorites'])->name('contacts.favorites');
+        Route::get('contacts/stats', [ContactController::class, 'stats'])->name('contacts.stats');
         Route::get('contacts/{contact}', [ContactController::class, 'show'])->name('contacts.show');
         Route::post('contacts/{contact}/favorite', [ContactController::class, 'markFavorite'])->name('contacts.favorite.mark');
         Route::delete('contacts/{contact}/favorite', [ContactController::class, 'removeFavorite'])->name('contacts.favorite.remove');
